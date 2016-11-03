@@ -3,9 +3,15 @@ package org.skyscreamer.nevado.jms.message;
 import org.skyscreamer.nevado.jms.NevadoSession;
 import org.skyscreamer.nevado.jms.destination.NevadoDestination;
 
-import javax.jms.*;
+import javax.jms.BytesMessage;
 import javax.jms.IllegalStateException;
+import javax.jms.JMSException;
+import javax.jms.MapMessage;
 import javax.jms.Message;
+import javax.jms.MessageFormatException;
+import javax.jms.ObjectMessage;
+import javax.jms.StreamMessage;
+import javax.jms.TextMessage;
 import java.util.Enumeration;
 
 /**
@@ -29,7 +35,8 @@ public abstract class NevadoMessage extends AbstractMessage<NevadoMessage> imple
     private transient boolean _readOnly = false;
     private transient int _localDeliveryCount = 0;
 
-    public NevadoMessage() {}
+    public NevadoMessage() {
+    }
 
     protected NevadoMessage(Message message) throws JMSException {
         setJMSMessageID(message.getJMSMessageID());
@@ -42,7 +49,7 @@ public abstract class NevadoMessage extends AbstractMessage<NevadoMessage> imple
         setJMSExpiration(message.getJMSExpiration());
         setJMSPriority(message.getJMSPriority());
         setJMSTimestamp(message.getJMSTimestamp());
-        for (Enumeration propertyNames = message.getPropertyNames(); propertyNames.hasMoreElements();) {
+        for (Enumeration propertyNames = message.getPropertyNames(); propertyNames.hasMoreElements(); ) {
             String name = propertyNames.nextElement().toString();
             Object obj = message.getObjectProperty(name);
             setObjectProperty(name, obj);
@@ -69,7 +76,7 @@ public abstract class NevadoMessage extends AbstractMessage<NevadoMessage> imple
         return super.propertyExists(property + "");
     }
 
-    public Object getNevadoProperty(NevadoProperty nevadoProperty ) throws JMSException {
+    public Object getNevadoProperty(NevadoProperty nevadoProperty) throws JMSException {
         return super.getObjectProperty(nevadoProperty + "");
     }
 
@@ -106,24 +113,18 @@ public abstract class NevadoMessage extends AbstractMessage<NevadoMessage> imple
         if (message != null) {
             if (message instanceof NevadoMessage) {
                 nevadoMessage = (NevadoMessage) message;
-            }
-            else {
+            } else {
                 if (message instanceof StreamMessage) {
-                    nevadoMessage = new NevadoStreamMessage((StreamMessage)message);
-                }
-                else if (message instanceof MapMessage) {
-                    nevadoMessage = new NevadoMapMessage((MapMessage)message);
-                }
-                else if (message instanceof TextMessage) {
-                    nevadoMessage = new NevadoTextMessage((TextMessage)message);
-                }
-                else if (message instanceof ObjectMessage) {
-                    nevadoMessage = new NevadoObjectMessage((ObjectMessage)message);
-                }
-                else if (message instanceof BytesMessage) {
-                    nevadoMessage = new NevadoBytesMessage((BytesMessage)message);
-                }
-                else {
+                    nevadoMessage = new NevadoStreamMessage((StreamMessage) message);
+                } else if (message instanceof MapMessage) {
+                    nevadoMessage = new NevadoMapMessage((MapMessage) message);
+                } else if (message instanceof TextMessage) {
+                    nevadoMessage = new NevadoTextMessage((TextMessage) message);
+                } else if (message instanceof ObjectMessage) {
+                    nevadoMessage = new NevadoObjectMessage((ObjectMessage) message);
+                } else if (message instanceof BytesMessage) {
+                    nevadoMessage = new NevadoBytesMessage((BytesMessage) message);
+                } else {
                     throw new UnsupportedOperationException("Unable to parse message of type: " + message.getClass().getName());
                 }
             }
@@ -178,5 +179,25 @@ public abstract class NevadoMessage extends AbstractMessage<NevadoMessage> imple
 
     public void incrementLocalDeliveryCount() {
         ++_localDeliveryCount;
+    }
+
+    @Override
+    public long getJMSDeliveryTime() throws JMSException {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public void setJMSDeliveryTime(long l) throws JMSException {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public <T> T getBody(Class<T> aClass) throws JMSException {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public boolean isBodyAssignableTo(Class aClass) throws JMSException {
+        throw new UnsupportedOperationException();
     }
 }

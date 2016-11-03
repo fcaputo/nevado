@@ -618,4 +618,34 @@ public class NevadoSession implements Session {
             throw new JMSException("SESSION DELIBERATELY THROWING EXCEPTION - EXPECTED BEHAVIOR - FOR TESTING MODE ONLY");
         }
     }
+
+    @Override
+    public MessageConsumer createSharedConsumer(Topic topic, String sharedSubscriptionName) throws JMSException {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public MessageConsumer createSharedConsumer(Topic topic, String sharedSubscriptionName, String messageSelector) throws JMSException {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public MessageConsumer createDurableConsumer(Topic topic, String name) throws JMSException {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public MessageConsumer createDurableConsumer(Topic topic, String name, String messageSelector, boolean noLocal) throws JMSException {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public MessageConsumer createSharedDurableConsumer(Topic topic, String name) throws JMSException {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public MessageConsumer createSharedDurableConsumer(Topic topic, String name, String messageSelector) throws JMSException {
+        throw new UnsupportedOperationException();
+    }
 }

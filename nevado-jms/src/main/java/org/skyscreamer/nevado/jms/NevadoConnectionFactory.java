@@ -61,6 +61,10 @@ public class NevadoConnectionFactory implements ConnectionFactory, QueueConnecti
     }
 
     public NevadoQueueConnection createQueueConnection(String awsAccessKey, String awsSecretKey) throws JMSException {
+        if(StringUtils.isEmpty(awsAccessKey)) {
+            // genericjmsra sends call this with empty strings
+            return createQueueConnection();
+        }
         checkSQSConnectorFactory();
         NevadoQueueConnection connection
                 = new NevadoQueueConnection(_sqsConnectorFactory.getInstance(awsAccessKey, awsSecretKey, _awsSQSEndpoint, _awsSNSEndpoint));
@@ -76,6 +80,10 @@ public class NevadoConnectionFactory implements ConnectionFactory, QueueConnecti
     }
 
     public NevadoConnection createConnection(String awsAccessKey, String awsSecretKey) throws JMSException {
+        if(StringUtils.isEmpty(awsAccessKey)) {
+            // genericjmsra sends call this with empty strings
+            return createConnection();
+        }
         checkSQSConnectorFactory();
         NevadoConnection connection = new NevadoConnection(_sqsConnectorFactory.getInstance(awsAccessKey, awsSecretKey, _awsSQSEndpoint, _awsSNSEndpoint));
         initializeConnection(connection);
@@ -90,6 +98,10 @@ public class NevadoConnectionFactory implements ConnectionFactory, QueueConnecti
     }
 
     public TopicConnection createTopicConnection(String awsAccessKey, String awsSecretKey) throws JMSException {
+        if(StringUtils.isEmpty(awsAccessKey)) {
+            // genericjmsra sends call this with empty strings
+            return createTopicConnection();
+        }
         checkSQSConnectorFactory();
         NevadoTopicConnection connection = new NevadoTopicConnection(_sqsConnectorFactory.getInstance(awsAccessKey, awsSecretKey, _awsSQSEndpoint, _awsSNSEndpoint));
         initializeConnection(connection);
@@ -114,7 +126,7 @@ public class NevadoConnectionFactory implements ConnectionFactory, QueueConnecti
     public void setSqsConnectorFactory(SQSConnectorFactory sqsConnectorFactory) {
         _sqsConnectorFactory = sqsConnectorFactory;
     }
-    
+
     public SQSConnectorFactory getSqsConnectorFactory() {
         return _sqsConnectorFactory;
     }
@@ -186,11 +198,11 @@ public class NevadoConnectionFactory implements ConnectionFactory, QueueConnecti
     public void setMaxPollWaitMs(long maxPollWaitMs) {
         _maxPollWaitMs = maxPollWaitMs;
     }
-    
+
     public void setDurableSubscriberPrefixOverride(String durableSubscriberPrefixOverride) {
         _durableSubscriberPrefixOverride = durableSubscriberPrefixOverride;
     }
-    
+
     public String getAwsSQSEndpoint() {
        return _awsSQSEndpoint;
     }
@@ -198,11 +210,11 @@ public class NevadoConnectionFactory implements ConnectionFactory, QueueConnecti
     public String getAwsSNSEndpoint() {
         return _awsSNSEndpoint;
     }
-    
+
     public long getMaxPollWaitMs() {
          return _maxPollWaitMs;
     }
-    
+
     public String getDurableSubscriberPrefixOverride() {
         return _durableSubscriberPrefixOverride;
     }
@@ -255,6 +267,26 @@ public class NevadoConnectionFactory implements ConnectionFactory, QueueConnecti
         {
             throw new IllegalStateException("SQSConnectorFactory is null, it must be set.");
         }
+    }
+
+    @Override
+    public JMSContext createContext() {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public JMSContext createContext(String s, String s1) {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public JMSContext createContext(String s, String s1, int i) {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public JMSContext createContext(int i) {
+        throw new UnsupportedOperationException();
     }
 }
 

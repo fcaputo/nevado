@@ -4,15 +4,37 @@ package org.skyscreamer.nevado.jms;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.skyscreamer.nevado.jms.connector.SQSConnector;
-import org.skyscreamer.nevado.jms.destination.*;
+import org.skyscreamer.nevado.jms.destination.NevadoDestination;
+import org.skyscreamer.nevado.jms.destination.NevadoProviderQueuePrefix;
+import org.skyscreamer.nevado.jms.destination.NevadoQueue;
+import org.skyscreamer.nevado.jms.destination.NevadoTemporaryQueue;
+import org.skyscreamer.nevado.jms.destination.NevadoTemporaryTopic;
+import org.skyscreamer.nevado.jms.destination.NevadoTopic;
 
-import javax.jms.*;
+import javax.jms.Connection;
+import javax.jms.ConnectionConsumer;
+import javax.jms.Destination;
+import javax.jms.ExceptionListener;
 import javax.jms.IllegalStateException;
+import javax.jms.InvalidClientIDException;
+import javax.jms.JMSException;
+import javax.jms.ServerSessionPool;
+import javax.jms.Session;
+import javax.jms.Topic;
 import java.math.BigInteger;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Random;
+import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.concurrent.atomic.AtomicBoolean;
+
+import static javax.jms.Session.AUTO_ACKNOWLEDGE;
+import static javax.jms.Session.SESSION_TRANSACTED;
 
 /**
  * Nevado's implementation of JMS Connection.
@@ -61,8 +83,7 @@ public class NevadoConnection implements Connection {
         nevadoSession.setOverrideJMSPriority(_jmsPriority);
         synchronized (_running) {
             _sessions.add(nevadoSession);
-            if (_running.get())
-            {
+            if (_running.get()) {
                 nevadoSession.start();
             }
         }
@@ -85,27 +106,23 @@ public class NevadoConnection implements Connection {
     }
 
     @Override
-    public void start() throws JMSException
-    {
+    public void start() throws JMSException {
         checkClosed();
         _inUse = true;
         synchronized (_running) {
             _running.set(true);
-            for(NevadoSession session : _sessions)
-            {
+            for (NevadoSession session : _sessions) {
                 session.start();
             }
         }
     }
 
     @Override
-    public void stop() throws JMSException
-    {
+    public void stop() throws JMSException {
         checkClosed();
         synchronized (_running) {
             _running.set(false);
-            for(NevadoSession session : _sessions)
-            {
+            for (NevadoSession session : _sessions) {
                 session.stop();
             }
         }
@@ -117,8 +134,7 @@ public class NevadoConnection implements Connection {
             if (!_closed.get()) {
                 stop();
                 List<JMSException> sessionExceptions = new ArrayList<JMSException>();
-                for(NevadoSession session : _sessions)
-                {
+                for (NevadoSession session : _sessions) {
                     try {
                         session.close();
                     } catch (JMSException e) {
@@ -127,18 +143,13 @@ public class NevadoConnection implements Connection {
                                 "throw it up the stack.  (First one if multiple.)", e);
                     }
                 }
-                for(NevadoDestination temporaryDestination : new ArrayList<NevadoDestination>(_temporaryDestinations)) {
+                for (NevadoDestination temporaryDestination : new ArrayList<NevadoDestination>(_temporaryDestinations)) {
                     try {
-                        if (temporaryDestination instanceof NevadoTemporaryQueue)
-                        {
-                            deleteTemporaryQueue((NevadoTemporaryQueue)temporaryDestination);
-                        }
-                        else if (temporaryDestination instanceof NevadoTemporaryTopic)
-                        {
+                        if (temporaryDestination instanceof NevadoTemporaryQueue) {
+                            deleteTemporaryQueue((NevadoTemporaryQueue) temporaryDestination);
+                        } else if (temporaryDestination instanceof NevadoTemporaryTopic) {
                             deleteTemporaryTopic((NevadoTemporaryTopic) temporaryDestination);
-                        }
-                        else
-                        {
+                        } else {
                             throw new IllegalStateException("Unexpected temporary destination of type: "
                                     + temporaryDestination.getClass().getName());
                         }
@@ -182,8 +193,7 @@ public class NevadoConnection implements Connection {
         return temporaryTopic;
     }
 
-    public void deleteTemporaryTopic(NevadoTemporaryTopic temporaryTopic) throws JMSException
-    {
+    public void deleteTemporaryTopic(NevadoTemporaryTopic temporaryTopic) throws JMSException {
         checkClosed();
         deleteTopic(temporaryTopic);
         _temporaryDestinations.remove(temporaryTopic);
@@ -194,8 +204,7 @@ public class NevadoConnection implements Connection {
         topic.setDeleted(true);
     }
 
-    protected NevadoTemporaryQueue createTemporaryQueue() throws JMSException
-    {
+    protected NevadoTemporaryQueue createTemporaryQueue() throws JMSException {
         checkClosed();
         String tempQueueName = "" + NevadoProviderQueuePrefix.TEMPORARY_DESTINATION_PREFIX
                 + new BigInteger(64, new Random()).toString(Character.MAX_RADIX) + _temporaryQueueSuffix;
@@ -206,8 +215,7 @@ public class NevadoConnection implements Connection {
         return temporaryQueue;
     }
 
-    public void deleteTemporaryQueue(NevadoTemporaryQueue temporaryQueue) throws JMSException
-    {
+    public void deleteTemporaryQueue(NevadoTemporaryQueue temporaryQueue) throws JMSException {
         checkClosed();
         deleteQueue(temporaryQueue);
         _temporaryDestinations.remove(temporaryQueue);
@@ -218,8 +226,7 @@ public class NevadoConnection implements Connection {
         queue.setDeleted(true);
     }
 
-    protected boolean ownsTemporaryDestination(Destination temporaryDestination)
-    {
+    protected boolean ownsTemporaryDestination(Destination temporaryDestination) {
         return _temporaryDestinations.contains(temporaryDestination);
     }
 
@@ -227,7 +234,7 @@ public class NevadoConnection implements Connection {
         Collection<NevadoQueue> queues = getSQSConnector()
                 .listQueues(NevadoProviderQueuePrefix.TEMPORARY_DESTINATION_PREFIX + "");
         Collection<NevadoTemporaryQueue> temporaryQueues = new HashSet<NevadoTemporaryQueue>(queues.size());
-        for(NevadoQueue queue : queues) {
+        for (NevadoQueue queue : queues) {
             temporaryQueues.add(new NevadoTemporaryQueue(this, queue));
         }
         return temporaryQueues;
@@ -236,7 +243,7 @@ public class NevadoConnection implements Connection {
     public Collection<NevadoTemporaryTopic> listAllTemporaryTopics() throws JMSException {
         Collection<NevadoTopic> topics = getSQSConnector().listTopics();
         Collection<NevadoTemporaryTopic> temporaryTopics = new HashSet<NevadoTemporaryTopic>(topics.size());
-        for(NevadoTopic topic : topics) {
+        for (NevadoTopic topic : topics) {
             if (topic.getTopicName().startsWith(NevadoProviderQueuePrefix.TEMPORARY_DESTINATION_PREFIX + ""))
                 temporaryTopics.add(new NevadoTemporaryTopic(this, topic));
         }
@@ -292,8 +299,7 @@ public class NevadoConnection implements Connection {
     @Override
     public void setClientID(String clientID) throws JMSException {
         checkClosed();
-        if (clientID == null || clientID.trim().length() == 0)
-        {
+        if (clientID == null || clientID.trim().length() == 0) {
             throw new InvalidClientIDException("Client ID is empty");
         }
         if (_clientID != null) {
@@ -302,8 +308,7 @@ public class NevadoConnection implements Connection {
         if (_inUse) {
             throw new IllegalStateException("Client ID cannot be set after the connection is in use");
         }
-        if (clientID != null && !clientID.matches("^[\\w\\-_]+$"))
-        {
+        if (clientID != null && !clientID.matches("^[\\w\\-_]+$")) {
             throw new InvalidClientIDException("Client ID can only include alphanumeric characters, hyphens, or underscores");
         }
         _clientID = clientID;
@@ -356,8 +361,7 @@ public class NevadoConnection implements Connection {
     }
 
     protected void checkClosed() throws IllegalStateException {
-        if (_closed.get())
-        {
+        if (_closed.get()) {
             throw new IllegalStateException("Connection is closed");
         }
     }
@@ -365,12 +369,33 @@ public class NevadoConnection implements Connection {
     public String getConnectionID() {
         return _connectionID;
     }
-    
+
     public void setDurableSubcriptionPrefixOveride(String durableSubcriptionPrefixOveride) {
         _durableSubcriptionPrefixOveride = durableSubcriptionPrefixOveride;
     }
-    
+
     public String getDurableSubcriptionPrefixOveride() {
         return _durableSubcriptionPrefixOveride;
+    }
+
+
+    public Session createSession(int acknowledgeMode) throws JMSException {
+        return createSession(acknowledgeMode == SESSION_TRANSACTED, acknowledgeMode);
+    }
+
+    public Session createSession() throws JMSException {
+        return createSession(false, AUTO_ACKNOWLEDGE);
+    }
+
+    @Override
+    public ConnectionConsumer createSharedConnectionConsumer(Topic topic, String s, String s1, ServerSessionPool serverSessionPool, int i) throws JMSException {
+        // not allowed in Java EE
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public ConnectionConsumer createSharedDurableConnectionConsumer(Topic topic, String s, String s1, ServerSessionPool serverSessionPool, int i) throws JMSException {
+        // not allowed in Java EE
+        throw new UnsupportedOperationException();
     }
 }

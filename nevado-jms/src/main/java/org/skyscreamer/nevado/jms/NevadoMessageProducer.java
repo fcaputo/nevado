@@ -184,4 +184,34 @@ public class NevadoMessageProducer implements MessageProducer, QueueSender, Topi
         }
         send((Topic)topic, message, deliveryMode, priority, ttl);
     }
+
+    @Override
+    public void setDeliveryDelay(long deliveryDelay) throws JMSException {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public long getDeliveryDelay() throws JMSException {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public void send(Message message, CompletionListener completionListener) throws JMSException {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public void send(Message message, int deliveryMode, int priority, long timeToLive, CompletionListener completionListener) throws JMSException {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public void send(Destination destination, Message message, CompletionListener completionListener) throws JMSException {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public void send(Destination destination, Message message, int deliveryMode, int priority, long timeToLive, CompletionListener completionListener) throws JMSException {
+        throw new UnsupportedOperationException();
+    }
 }
