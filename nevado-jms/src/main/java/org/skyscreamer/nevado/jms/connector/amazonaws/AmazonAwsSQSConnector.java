@@ -6,11 +6,19 @@ import com.amazonaws.ClientConfiguration;
 import com.amazonaws.Protocol;
 import com.amazonaws.auth.AWSCredentials;
 import com.amazonaws.auth.BasicAWSCredentials;
+import com.amazonaws.auth.DefaultAWSCredentialsProviderChain;
 import com.amazonaws.services.sns.AmazonSNS;
 import com.amazonaws.services.sns.AmazonSNSAsync;
 import com.amazonaws.services.sns.AmazonSNSAsyncClient;
 import com.amazonaws.services.sns.AmazonSNSClient;
-import com.amazonaws.services.sns.model.*;
+import com.amazonaws.services.sns.model.CreateTopicRequest;
+import com.amazonaws.services.sns.model.CreateTopicResult;
+import com.amazonaws.services.sns.model.DeleteTopicRequest;
+import com.amazonaws.services.sns.model.ListTopicsResult;
+import com.amazonaws.services.sns.model.PublishRequest;
+import com.amazonaws.services.sns.model.SubscribeRequest;
+import com.amazonaws.services.sns.model.Topic;
+import com.amazonaws.services.sns.model.UnsubscribeRequest;
 import com.amazonaws.services.sqs.AmazonSQS;
 import com.amazonaws.services.sqs.AmazonSQSAsyncClient;
 import com.amazonaws.services.sqs.AmazonSQSClient;
@@ -18,6 +26,7 @@ import com.amazonaws.services.sqs.model.CreateQueueRequest;
 import com.amazonaws.services.sqs.model.CreateQueueResult;
 import com.amazonaws.services.sqs.model.ListQueuesRequest;
 import com.amazonaws.services.sqs.model.ListQueuesResult;
+import org.apache.commons.lang.StringUtils;
 import org.skyscreamer.nevado.jms.connector.AbstractSQSConnector;
 import org.skyscreamer.nevado.jms.connector.SQSMessage;
 import org.skyscreamer.nevado.jms.connector.SQSQueue;
@@ -59,14 +68,14 @@ public class AmazonAwsSQSConnector extends AbstractSQSConnector {
 
     public AmazonAwsSQSConnector(String awsAccessKey, String awsSecretKey, boolean isSecure, long receiveCheckIntervalMs, boolean isAsync) {
         super(receiveCheckIntervalMs, isAsync);
-        AWSCredentials awsCredentials = new BasicAWSCredentials(awsAccessKey, awsSecretKey);
+        AWSCredentials awsCredentials = getAWSCredentials(awsAccessKey, awsSecretKey);
         ClientConfiguration clientConfiguration = new ClientConfiguration();
         String proxyHost = System.getProperty("http.proxyHost");
         String proxyPort = System.getProperty("http.proxyPort");
-        if(proxyHost != null){
+        if (proxyHost != null) {
             clientConfiguration.setProxyHost(proxyHost);
-            if(proxyPort != null){
-              clientConfiguration.setProxyPort(Integer.parseInt(proxyPort));
+            if (proxyPort != null) {
+                clientConfiguration.setProxyPort(Integer.parseInt(proxyPort));
             }
         }
         clientConfiguration.setProtocol(isSecure ? Protocol.HTTPS : Protocol.HTTP);
@@ -78,6 +87,13 @@ public class AmazonAwsSQSConnector extends AbstractSQSConnector {
             _amazonSQS = new AmazonSQSClient(awsCredentials, clientConfiguration);
             _amazonSNS = new AmazonSNSClient(awsCredentials, clientConfiguration);
         }
+    }
+
+    private AWSCredentials getAWSCredentials(String awsAccessKey, String awsSecretKey) {
+        if (StringUtils.isEmpty(awsAccessKey)) {
+            return new DefaultAWSCredentialsProviderChain().getCredentials();
+        }
+        return new BasicAWSCredentials(awsAccessKey, awsSecretKey);
     }
 
     public boolean isTestAlwaysPasses() {
@@ -94,12 +110,11 @@ public class AmazonAwsSQSConnector extends AbstractSQSConnector {
         PublishRequest request = new PublishRequest(arn, serializedMessage);
         try {
             if (isAsync()) {
-                ((AmazonSNSAsync)_amazonSNS).publishAsync(request);
+                ((AmazonSNSAsync) _amazonSNS).publishAsync(request);
             } else {
                 _amazonSNS.publish(request);
             }
-        }
-        catch (AmazonClientException e) {
+        } catch (AmazonClientException e) {
             throw handleAWSException("Unable to send message to topic: " + arn, e);
         }
     }
@@ -107,8 +122,7 @@ public class AmazonAwsSQSConnector extends AbstractSQSConnector {
     @Override
     protected AmazonAwsSQSQueue getSQSQueueImpl(NevadoQueue queue) throws JMSException {
         try {
-            if (queue.getQueueUrl() == null)
-            {
+            if (queue.getQueueUrl() == null) {
                 CreateQueueResult result = _amazonSQS.createQueue(new CreateQueueRequest(queue.getQueueName()));
                 queue.setQueueUrl(result.getQueueUrl());
             }
@@ -142,7 +156,7 @@ public class AmazonAwsSQSConnector extends AbstractSQSConnector {
             throw handleAWSException("Unable to list queues with prefix '" + temporaryQueuePrefix + "'", e);
         }
         queues = new HashSet<NevadoQueue>(result.getQueueUrls().size());
-        for(String queueUrlString : result.getQueueUrls()) {
+        for (String queueUrlString : result.getQueueUrls()) {
             URL queueURL = null;
             try {
                 queueURL = new URL(queueUrlString);
@@ -180,7 +194,7 @@ public class AmazonAwsSQSConnector extends AbstractSQSConnector {
             throw handleAWSException("Unable to list topics", e);
         }
         topics = new HashSet<NevadoTopic>(result.getTopics().size());
-        for(Topic topic : result.getTopics()) {
+        for (Topic topic : result.getTopics()) {
             topics.add(new NevadoTopic(topic.getTopicArn()));
         }
         return topics;
@@ -249,13 +263,11 @@ public class AmazonAwsSQSConnector extends AbstractSQSConnector {
     }
 
     protected String getTopicARN(NevadoTopic topic) throws JMSException {
-        if (topic.getArn() == null)
-        {
+        if (topic.getArn() == null) {
             CreateTopicResult result;
             try {
                 result = _amazonSNS.createTopic(new CreateTopicRequest(topic.getTopicName()));
-            }
-            catch (AmazonClientException e) {
+            } catch (AmazonClientException e) {
                 throw handleAWSException("Unable to create/lookup topic: " + topic, e);
             }
             topic.setArn(result.getTopicArn());
@@ -269,16 +281,11 @@ public class AmazonAwsSQSConnector extends AbstractSQSConnector {
         _log.error(exMessage, e);
         if (e.getCause() != null &&
                 (UnknownHostException.class.equals(e.getCause().getClass())
-                        || SSLException.class.equals((e.getCause().getClass()))))
-        {
+                        || SSLException.class.equals((e.getCause().getClass())))) {
             jmsException = new ResourceAllocationException(exMessage);
-        }
-        else if (isSecurityException(e))
-        {
+        } else if (isSecurityException(e)) {
             jmsException = new JMSSecurityException(exMessage);
-        }
-        else
-        {
+        } else {
             jmsException = new JMSException(exMessage);
         }
         return jmsException;
@@ -286,9 +293,8 @@ public class AmazonAwsSQSConnector extends AbstractSQSConnector {
 
     private boolean isSecurityException(AmazonClientException e) {
         if (e instanceof AmazonServiceException) {
-            return AWS_ERROR_CODE_AUTHENTICATION.equals(((AmazonServiceException)e).getErrorCode());
-        }
-        else {
+            return AWS_ERROR_CODE_AUTHENTICATION.equals(((AmazonServiceException) e).getErrorCode());
+        } else {
             return false;
         }
     }
