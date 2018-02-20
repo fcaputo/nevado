@@ -33,8 +33,7 @@ import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-import static javax.jms.Session.AUTO_ACKNOWLEDGE;
-import static javax.jms.Session.SESSION_TRANSACTED;
+import static javax.jms.Session.*;
 
 /**
  * Nevado's implementation of JMS Connection.
@@ -123,7 +122,12 @@ public class NevadoConnection implements Connection {
         synchronized (_running) {
             _running.set(false);
             for (NevadoSession session : _sessions) {
-                session.stop();
+                // using glassfish generic jms ra, the pool doesn't call close. instead it calls start and stop.
+                if (session.isClosed()) {
+                    _sessions.remove(session);
+                } else {
+                    session.stop();
+                }
             }
         }
     }
