@@ -9,6 +9,7 @@ import javax.jms.ExceptionListener;
 import javax.jms.JMSException;
 import java.util.Set;
 import java.util.concurrent.CopyOnWriteArraySet;
+import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * Asynchronous processor for consumers with registered message listeners
@@ -16,6 +17,7 @@ import java.util.concurrent.CopyOnWriteArraySet;
  * @author Carter Page <carter@skyscreamer.org>
  */
 public class  AsyncConsumerRunner implements Runnable {
+    private final static AtomicLong threadNum = new AtomicLong(1);
     private final Log _log = LogFactory.getLog(getClass());
     private final Connection _connection;
     private final Set<NevadoMessageConsumer> _asyncConsumers = new CopyOnWriteArraySet<NevadoMessageConsumer>();
@@ -99,7 +101,7 @@ public class  AsyncConsumerRunner implements Runnable {
 
     synchronized void start() {
         if (!_running) {
-            runner = new Thread(this);
+            runner = new Thread(this, getClass().getSimpleName() + "-" + threadNum.getAndIncrement());
             //runner.setPriority(Thread.MAX_PRIORITY);
             //runner.setDaemon(true);
             runner.start();
