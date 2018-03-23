@@ -11,6 +11,7 @@ import org.skyscreamer.nevado.jms.destination.NevadoTopic;
 import org.skyscreamer.nevado.jms.message.InvalidMessage;
 import org.skyscreamer.nevado.jms.message.NevadoMessage;
 import org.skyscreamer.nevado.jms.message.NevadoProperty;
+import org.skyscreamer.nevado.jms.message.NevadoTextMessage;
 import org.skyscreamer.nevado.jms.util.MessageIdUtil;
 import org.skyscreamer.nevado.jms.util.SerializeUtil;
 
@@ -271,6 +272,12 @@ public abstract class AbstractSQSConnector implements SQSConnector {
      * @throws JMSException Unable to serialize the message
      */
     protected String serializeMessage(NevadoMessage message) throws JMSException {
+        if (message instanceof NevadoTextMessage){
+            String text = ((NevadoTextMessage) message).getText();
+            if (isJson(text)){
+                return text;
+            }
+        }
         String serializedMessage;
         try {
             serializedMessage = SerializeUtil.serializeToString(message);
@@ -282,6 +289,14 @@ public abstract class AbstractSQSConnector implements SQSConnector {
         return serializedMessage;
     }
 
+    private boolean isJson(String text) {
+        if (text == null){
+            return false;
+        }
+        text = text.trim();
+        return  text.startsWith("{") && text.endsWith("}");
+    }
+
     /**
      * Deserializes the body of an SQS message into a NevadoMessage object.
      *
@@ -290,6 +305,11 @@ public abstract class AbstractSQSConnector implements SQSConnector {
      * @throws JMSException Unable to deserializeFromString a single NevadoMessage object from the source
      */
     protected NevadoMessage deserializeMessage(String serializedMessage) throws JMSException {
+        if (isJson(serializedMessage)){
+            NevadoTextMessage textMessage = new NevadoTextMessage();
+            textMessage.setText(serializedMessage);
+            return textMessage;
+        }
         Serializable deserializedObject;
         try {
             deserializedObject = SerializeUtil.deserializeFromString(serializedMessage);
