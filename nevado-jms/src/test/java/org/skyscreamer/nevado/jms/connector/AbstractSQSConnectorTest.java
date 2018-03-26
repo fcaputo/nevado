@@ -4,7 +4,9 @@ import org.hamcrest.CoreMatchers;
 import org.junit.Before;
 import org.junit.Test;
 import org.skyscreamer.nevado.jms.connector.mock.MockSQSConnector;
+import org.skyscreamer.nevado.jms.message.NevadoBytesMessage;
 import org.skyscreamer.nevado.jms.message.NevadoMessage;
+import org.skyscreamer.nevado.jms.message.NevadoObjectMessage;
 import org.skyscreamer.nevado.jms.message.NevadoTextMessage;
 
 import javax.jms.JMSException;
@@ -25,42 +27,41 @@ public class AbstractSQSConnectorTest {
     @Test
     public void shouldSerializeMessage() throws JMSException {
         //arrange
-        NevadoTextMessage message = new NevadoTextMessage();
-        message.setText("fooBarBuzz");
+        NevadoObjectMessage message = new NevadoObjectMessage();
+        message.setObject("fooBarBuzz");
 
         //act
         String serializeMessage = sqsConnector.serializeMessage(message);
 
         //assert
-        assertThat(serializeMessage.startsWith("{"), is(false));
-        assertThat(serializeMessage.endsWith("}"), is(false));
+        assertThat(serializeMessage.contains("foo"), is(false));
 
         //act
         NevadoMessage deserializeMessage = sqsConnector.deserializeMessage(serializeMessage);
 
         //assert
-        assertThat(deserializeMessage, is(instanceOf(NevadoTextMessage.class)));
-        assertThat(((NevadoTextMessage)deserializeMessage).getText(), is("fooBarBuzz"));
+        assertThat(deserializeMessage, is(instanceOf(NevadoObjectMessage.class)));
+        assertThat(((NevadoObjectMessage) deserializeMessage).getObject().toString(), is("fooBarBuzz"));
     }
 
     @Test
-    public void jsonIsNotSerializedAgain() throws JMSException {
+    public void textIsNotSerialized() throws JMSException {
         //arrange
         NevadoTextMessage message = new NevadoTextMessage();
-        String json = "\n  \t \n{\"foo\":\"bar\"}";
-        message.setText(json);
+        String text = "something";
+        message.setText(text);
 
         //act
         String serializeMessage = sqsConnector.serializeMessage(message);
 
         //assert
-        assertThat(serializeMessage, is(json));
+        assertThat(serializeMessage, is(text));
 
         //act
         NevadoMessage deserializeMessage = sqsConnector.deserializeMessage(serializeMessage);
 
         //assert
         assertThat(deserializeMessage, is(instanceOf(NevadoTextMessage.class)));
-        assertThat(((NevadoTextMessage)deserializeMessage).getText(), is(json));
+        assertThat(((NevadoTextMessage)deserializeMessage).getText(), is(text));
     }
 }

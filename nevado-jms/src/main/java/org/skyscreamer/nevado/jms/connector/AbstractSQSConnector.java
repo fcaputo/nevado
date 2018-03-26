@@ -1,5 +1,6 @@
 package org.skyscreamer.nevado.jms.connector;
 
+import com.caucho.hessian.io.HessianProtocolException;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.json.JSONException;
@@ -21,7 +22,6 @@ import java.io.IOException;
 import java.io.Serializable;
 import java.util.Date;
 import java.util.List;
-import java.util.Map;
 
 /**
  * Abstract connector that handles handling of messages and queues independent of the actual implementation.
@@ -272,9 +272,9 @@ public abstract class AbstractSQSConnector implements SQSConnector {
      * @throws JMSException Unable to serialize the message
      */
     protected String serializeMessage(NevadoMessage message) throws JMSException {
-        if (message instanceof NevadoTextMessage){
+        if (message instanceof NevadoTextMessage) {
             String text = ((NevadoTextMessage) message).getText();
-            if (isJson(text)){
+            if (text != null){
                 return text;
             }
         }
@@ -289,14 +289,6 @@ public abstract class AbstractSQSConnector implements SQSConnector {
         return serializedMessage;
     }
 
-    private boolean isJson(String text) {
-        if (text == null){
-            return false;
-        }
-        text = text.trim();
-        return  text.startsWith("{") && text.endsWith("}");
-    }
-
     /**
      * Deserializes the body of an SQS message into a NevadoMessage object.
      *
@@ -305,14 +297,13 @@ public abstract class AbstractSQSConnector implements SQSConnector {
      * @throws JMSException Unable to deserializeFromString a single NevadoMessage object from the source
      */
     protected NevadoMessage deserializeMessage(String serializedMessage) throws JMSException {
-        if (isJson(serializedMessage)){
-            NevadoTextMessage textMessage = new NevadoTextMessage();
-            textMessage.setText(serializedMessage);
-            return textMessage;
-        }
         Serializable deserializedObject;
         try {
             deserializedObject = SerializeUtil.deserializeFromString(serializedMessage);
+        } catch (HessianProtocolException e) {
+            NevadoTextMessage textMessage = new NevadoTextMessage();
+            textMessage.setText(serializedMessage);
+            return textMessage;
         } catch (IOException e) {
             String exMessage = "Unable to deserialized message: " + e.getMessage();
             _log.error(exMessage, e);

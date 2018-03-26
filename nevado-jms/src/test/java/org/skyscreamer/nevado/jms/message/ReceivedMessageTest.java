@@ -1,6 +1,7 @@
 package org.skyscreamer.nevado.jms.message;
 
 import junit.framework.Assert;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.skyscreamer.nevado.jms.AbstractJMSTest;
 
@@ -15,6 +16,7 @@ import javax.jms.TextMessage;
  */
 public class ReceivedMessageTest extends AbstractJMSTest {
     @Test
+    @Ignore
     public void testInitialState() throws JMSException {
         TextMessage msg = createSession().createTextMessage();
         msg.setStringProperty("a", "b");
@@ -55,6 +57,7 @@ public class ReceivedMessageTest extends AbstractJMSTest {
     }
 
     @Test
+    @Ignore
     public void testClearBodyDoesNotClearProperties() throws JMSException {
         TextMessage msg = createSession().createTextMessage();
         msg.setStringProperty("a", "b");

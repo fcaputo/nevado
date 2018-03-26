@@ -5,6 +5,7 @@ import org.junit.Test;
 import org.skyscreamer.nevado.jms.AbstractJMSTest;
 import org.skyscreamer.nevado.jms.NevadoConnection;
 import org.skyscreamer.nevado.jms.NevadoSession;
+import org.skyscreamer.nevado.jms.message.NevadoTextMessage;
 import org.skyscreamer.nevado.jms.util.RandomData;
 import org.skyscreamer.nevado.jms.util.TestMessageListener;
 import org.skyscreamer.nevado.jms.util.TestMessageListenerRuntimeException;
@@ -154,11 +155,11 @@ public class MessageListenerTest extends AbstractJMSTest {
         session.commit();
         producer.send(msg2);
         session.commit();
-        Message msgOut = messageListener.getMessage(5000);
-        if (msg1.equals(messageListener.getFirstMessage()))
-            Assert.assertEquals(msg2, msgOut);
+        NevadoTextMessage msgOut = (NevadoTextMessage) messageListener.getMessage(5000);
+        if (msg1.getText().equals(((NevadoTextMessage)messageListener.getFirstMessage()).getText()))
+            Assert.assertEquals(msg2.getText(), msgOut.getText());
         else if (msg2.equals(messageListener.getFirstMessage()))
-            Assert.assertEquals(msg1, msgOut);
+            Assert.assertEquals(msg1.getText(), msgOut.getText());
         else
             Assert.fail("Message did not match either sent: " + msgOut);
         connection.close();

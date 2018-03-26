@@ -6,6 +6,7 @@ import org.skyscreamer.nevado.jms.AbstractJMSTest;
 import org.skyscreamer.nevado.jms.NevadoConnection;
 import org.skyscreamer.nevado.jms.NevadoSession;
 import org.skyscreamer.nevado.jms.destination.NevadoTopic;
+import org.skyscreamer.nevado.jms.message.NevadoTextMessage;
 import org.skyscreamer.nevado.jms.util.RandomData;
 
 import javax.jms.*;
@@ -28,7 +29,7 @@ public class DurableTopicTest extends AbstractJMSTest {
         TextMessage msg3 = session.createTextMessage(RandomData.readString());
         MessageProducer producer = session.createProducer(topic);
         producer.send(msg1);
-        Assert.assertEquals(msg1, subscriber.receive(2000));
+        Assert.assertEquals(msg1.getText(), ((NevadoTextMessage)subscriber.receive(2000)).getText());
         producer.send(msg2);
         producer.send(msg3);
         getConnection().close();
@@ -37,9 +38,9 @@ public class DurableTopicTest extends AbstractJMSTest {
         conn.start();
         session = conn.createSession(false, Session.AUTO_ACKNOWLEDGE);
         subscriber = session.createDurableSubscriber(topic, durableTopicName);
-        Message msgOut = subscriber.receive(2000);
+        NevadoTextMessage msgOut = (NevadoTextMessage) subscriber.receive(2000);
         Assert.assertNotNull(msgOut);
-        if (!msg2.equals(msgOut) && !msg3.equals(msgOut))
+        if (!msg2.getText().equals(msgOut.getText()) && !msg3.getText().equals(msgOut.getText()))
         {
             Assert.fail("Got " + msgOut + " ; expected " + msg2 + " or " + msg3);
         }
@@ -99,7 +100,7 @@ public class DurableTopicTest extends AbstractJMSTest {
         session = conn.createSession(false, Session.AUTO_ACKNOWLEDGE);
         subscriber = session.createDurableSubscriber(topic, durableTopicName);
         msgOut = subscriber.receive(2000);
-        Assert.assertEquals(msg1, msgOut);
+        Assert.assertEquals(msg1.getText(), ((NevadoTextMessage)msgOut).getText());
         subscriber.close();
         session.unsubscribe(durableTopicName);
 

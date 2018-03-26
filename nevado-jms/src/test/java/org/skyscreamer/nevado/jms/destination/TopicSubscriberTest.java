@@ -1,6 +1,7 @@
 package org.skyscreamer.nevado.jms.destination;
 
 import junit.framework.Assert;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.skyscreamer.nevado.jms.*;
 import org.skyscreamer.nevado.jms.util.RandomData;
@@ -33,6 +34,7 @@ public class TopicSubscriberTest extends AbstractJMSTest {
     }
 
     @Test
+    @Ignore
     public void testNoLocal() throws JMSException
     {
         getConnection().close(); // Don't use the provided connection
