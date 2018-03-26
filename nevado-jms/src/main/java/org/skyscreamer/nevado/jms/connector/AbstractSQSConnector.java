@@ -1,5 +1,6 @@
 package org.skyscreamer.nevado.jms.connector;
 
+import com.caucho.hessian.io.HessianProtocolException;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.json.JSONException;
@@ -11,6 +12,7 @@ import org.skyscreamer.nevado.jms.destination.NevadoTopic;
 import org.skyscreamer.nevado.jms.message.InvalidMessage;
 import org.skyscreamer.nevado.jms.message.NevadoMessage;
 import org.skyscreamer.nevado.jms.message.NevadoProperty;
+import org.skyscreamer.nevado.jms.message.NevadoTextMessage;
 import org.skyscreamer.nevado.jms.util.MessageIdUtil;
 import org.skyscreamer.nevado.jms.util.SerializeUtil;
 
@@ -20,7 +22,6 @@ import java.io.IOException;
 import java.io.Serializable;
 import java.util.Date;
 import java.util.List;
-import java.util.Map;
 
 /**
  * Abstract connector that handles handling of messages and queues independent of the actual implementation.
@@ -271,6 +272,12 @@ public abstract class AbstractSQSConnector implements SQSConnector {
      * @throws JMSException Unable to serialize the message
      */
     protected String serializeMessage(NevadoMessage message) throws JMSException {
+        if (message instanceof NevadoTextMessage) {
+            String text = ((NevadoTextMessage) message).getText();
+            if (text != null){
+                return text;
+            }
+        }
         String serializedMessage;
         try {
             serializedMessage = SerializeUtil.serializeToString(message);
@@ -293,6 +300,10 @@ public abstract class AbstractSQSConnector implements SQSConnector {
         Serializable deserializedObject;
         try {
             deserializedObject = SerializeUtil.deserializeFromString(serializedMessage);
+        } catch (HessianProtocolException e) {
+            NevadoTextMessage textMessage = new NevadoTextMessage();
+            textMessage.setText(serializedMessage);
+            return textMessage;
         } catch (IOException e) {
             String exMessage = "Unable to deserialized message: " + e.getMessage();
             _log.error(exMessage, e);
